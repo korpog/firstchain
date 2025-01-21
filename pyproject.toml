@@ -1,7 +1,16 @@
 [project]
 name = "lovechain"
 version = "0.1.0"
-description = "Add your description here"
+description = "REST API using FastAPI and LangChain. Ask questions about Lovecraft's works and get answers from the AI."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "coverage>=7.6.10",
+    "fastapi>=0.115.6",
+    "langchain-chroma>=0.2.0",
+    "langchain-openai>=0.3.1",
+    "passlib[bcrypt]>=1.7.4",
+    "pyjwt>=2.10.1",
+    "pytest>=8.3.4",
+    "sqlmodel>=0.0.22",
+]
