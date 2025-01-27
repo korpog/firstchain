@@ -1,6 +1,8 @@
+import os
+import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
-import jwt
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status, APIRouter
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
@@ -15,7 +17,9 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-SECRET_KEY = ""
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
