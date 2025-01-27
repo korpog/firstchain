@@ -705,6 +705,7 @@ dependencies = [
     { name = "passlib", extra = ["bcrypt"] },
     { name = "pyjwt" },
     { name = "pytest" },
+    { name = "python-dotenv" },
     { name = "sqlmodel" },
 ]
 
@@ -717,6 +718,7 @@ requires-dist = [
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
     { name = "pyjwt", specifier = ">=2.10.1" },
     { name = "pytest", specifier = ">=8.3.4" },
+    { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "sqlmodel", specifier = ">=0.0.22" },
 ]
 
