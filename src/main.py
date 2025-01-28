@@ -3,13 +3,11 @@ from pydantic import ValidationError
 from datetime import datetime
 from typing import Annotated
 from sqlmodel import Session, select
-from .llm import setup_llm
+from .llm import get_rag_graph, CompiledStateGraph
 from .models import Question, Answer, Document
 from .db import User, Conversation, Message, create_db_and_tables, get_session
 from .auth import router as auth_router, get_current_user
 from fastapi.middleware.cors import CORSMiddleware
-
-
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -27,17 +25,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-state_graph = setup_llm()
-
-
 @app.on_event("startup")
 def on_startup() -> None:
     create_db_and_tables()
 
-
 @app.get("/user/me/conversations/", response_model=list[Conversation])
-def list_conversations(current_user: Annotated[User, Depends(get_current_user)],
-                        db: Annotated[Session, Depends(get_session)]) -> list[Conversation]:
+def list_conversations(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_session)]
+) -> list[Conversation]:
     """
     List conversations for the current user.
     Requires authentication.
@@ -47,10 +43,11 @@ def list_conversations(current_user: Annotated[User, Depends(get_current_user)],
     result = statement.all()
     return result
 
-
 @app.get("/conversation/{conversation_id}/messages/", response_model=list[Message])
 def get_conversation(
-    conversation_id: int, current_user: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_session)]
+    conversation_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_session)]
 ) -> list[Message]:
     """
     Get messages from a conversation.
@@ -61,18 +58,19 @@ def get_conversation(
     result = statement.all()
     return result
 
-
 @app.post("/ask/")
-def ask_question(
+async def ask_question(
     request: Question,
-    current_user: Annotated[User, Depends(get_current_user)], 
-    db: Annotated[Session, Depends(get_session)]
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_session)],
+    graph: CompiledStateGraph = Depends(get_rag_graph)
 ) -> Answer:
     """
     Ask a question and get an answer.
     Either creates a new conversation or adds to an existing one.
     Requires authentication.
     """
+    # Get or create conversation
     statement = db.exec(select(Conversation).where(
         Conversation.user_id == current_user.id
     ).order_by(Conversation.timestamp.desc()))
@@ -86,7 +84,12 @@ def ask_question(
     else:
         conversation = latest_conversation
     
-    response = state_graph.invoke({"question": request.question})
+    # Invoke RAG pipeline
+    response = graph.invoke({
+        "question": request.question,
+        "context": [],
+        "answer": ""
+    })
     
     if not response or "answer" not in response:
         raise HTTPException(
@@ -94,6 +97,7 @@ def ask_question(
             detail="Invalid response from processing pipeline"
         )
     
+    # Save messages to database
     question_message = Message(
         user_id=current_user.id,
         conversation_id=conversation.id,
@@ -112,7 +116,7 @@ def ask_question(
     db.commit()
     
     return Answer(
-        question=response["question"],
-        context=response["context"],
+        question=request.question,
+        context=response.get("context", []),
         answer=response["answer"]
     )

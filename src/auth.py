@@ -10,6 +10,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from .db import User, get_session
+from .config import get_settings 
 
 router = APIRouter(
     prefix="/auth",
@@ -17,9 +18,9 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-load_dotenv()
+settings = get_settings()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = settings.auth_secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

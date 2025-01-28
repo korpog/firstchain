@@ -1,5 +1,5 @@
-from langchain_ollama import OllamaEmbeddings
-from langchain_ollama import ChatOllama
+# llm.py
+from fastapi import Depends
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -8,6 +8,7 @@ from langchain_core.documents import Document
 from langgraph.graph import START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from typing_extensions import List, TypedDict
+from .config import get_llm_config, LLMConfig
 
 TEXT_FILE_PATH = "./text/theodorus.txt"
 
@@ -15,7 +16,6 @@ class State(TypedDict):
     question: str
     context: List[Document]
     answer: str
-
 
 def load_split_text(text_file_path: str) -> List[Document]:
     """
@@ -27,13 +27,9 @@ def load_split_text(text_file_path: str) -> List[Document]:
         chunk_size=1000, chunk_overlap=200, add_start_index=True
     )
     split_docs = text_splitter.split_documents(docs)
-
     return split_docs
 
-
-
-
-def build_graph(vector_store: Chroma, llm: ChatOllama) -> CompiledStateGraph:
+def build_graph(vector_store: Chroma, llm) -> CompiledStateGraph:
     """
     Build a state graph for the RAG system.
     """
@@ -54,30 +50,30 @@ def build_graph(vector_store: Chroma, llm: ChatOllama) -> CompiledStateGraph:
     graph_builder = StateGraph(State).add_sequence([retrieve, generate])
     graph_builder.add_edge(START, "retrieve")
     graph = graph_builder.compile()
-
     return graph
 
-def setup_llm() -> CompiledStateGraph:
+def get_vector_store(llm_config: LLMConfig = Depends(get_llm_config)) -> Chroma:
     """
-    Setup the LLM, word embeddings and vector store. 
-    Load documents into the vector store. Build the state graph.
+    Get or create the vector store as a dependency.
     """
-    # from langchain_openai import ChatOpenAI
-    # from langchain_openai import OpenAIEmbeddings
-    # llm = ChatOpenAI(model="gpt-4o-mini")
-    # embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-
-    llm = ChatOllama(
-        model="deepseek-r1:1.5b",
-        temperature=0.0,
+    embeddings = llm_config.get_embeddings()
+    vector_store = Chroma(
+        embedding_function=embeddings,
+        persist_directory="vector_store"
     )
-    embeddings = OllamaEmbeddings(model="deepseek-r1:1.5b")
-    vector_store = Chroma(embedding_function=embeddings,
-                          persist_directory="vector_store")
     
-    split_docs = load_split_text(TEXT_FILE_PATH)
-    vector_store.add_documents(documents=split_docs)
-    graph = build_graph(vector_store, llm)
+    # Only load documents if the collection is empty
+    if not vector_store._collection.count():
+        split_docs = load_split_text(TEXT_FILE_PATH)
+        vector_store.add_documents(documents=split_docs)
+        
+    return vector_store
 
-    return graph
-
+def get_rag_graph(
+    vector_store: Chroma = Depends(get_vector_store),
+    llm_config: LLMConfig = Depends(get_llm_config)
+) -> CompiledStateGraph:
+    """
+    Get the RAG graph as a FastAPI dependency.
+    """
+    return build_graph(vector_store, llm_config.get_llm())
