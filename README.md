@@ -20,3 +20,5 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
 Open terminal in your project directory and run the following command
 
 ```uv run -- fastapi run src/main.py```
+
+![API Response](https://github.com/korpog/screens/blob/main/firstchain/hume.png)
