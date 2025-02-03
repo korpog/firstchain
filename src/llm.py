@@ -10,7 +10,7 @@ from langgraph.graph.state import CompiledStateGraph
 from typing_extensions import List, TypedDict
 from .config import get_llm_config, LLMConfig
 
-TEXT_FILE_PATH = "./text/theodorus.txt"
+TEXT_FILE_PATH = "./text/hume_treatise.txt"
 
 class State(TypedDict):
     question: str
