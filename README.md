@@ -21,4 +21,11 @@ Open terminal in your project directory and run the following command
 
 ```uv run -- fastapi run src/main.py```
 
+### 2.2 With Docker
+In your project directory:
+
+```docker build -t firstchain .```
+
+```docker run --env-file .env -p 8000:8000 firstchain```
+
 ![API Response](https://github.com/korpog/screens/blob/main/firstchain/hume.png)
